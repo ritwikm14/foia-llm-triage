@@ -1,0 +1,37 @@
+﻿name: ci
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8
+
+      - name: Lint (flake8)
+        run: |
+          flake8 app --max-line-length=100
+
+      - name: Smoke run (single request)
+        run: |
+          python -m app.main --text "Test request for emails between Mayor's office and ACME."
+
+      - name: Smoke run (batch jsonl)
+        run: |
+          python -m app.main --jsonl data/requests_sample.jsonl --out results.jsonl
+          test -s results.jsonl
