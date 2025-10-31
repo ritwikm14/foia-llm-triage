@@ -169,5 +169,4 @@ Small modules; easy to replace parts without churn
 📜 License
 MIT — use freely for demos and internal pilots. Validate outputs and keep a human in the loop for production use.
 
-[![CI](https://github.com/ritwikm14/foia-llm-triage/actions/workflows/ci.yml/badge.svg)](https://github.com/ritwikm14/foia-llm-triage/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-000)](./LICENSE)
+
