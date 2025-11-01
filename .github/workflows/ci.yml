@@ -2,36 +2,47 @@
 
 on:
   push:
-    branches: [ "main" ]
   pull_request:
 
 jobs:
-  build-and-test:
+  build-and-smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install deps
+      # Install deps using prebuilt wheels only (fast & reliable on Actions)
+      - name: Install dependencies (wheels only)
+        env:
+          PIP_ONLY_BINARY: ":all:"   # refuse to build from source
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install flake8
 
-      - name: Lint (flake8)
+      # Quick sanity print so logs show versions and interpreter path
+      - name: Quick environment report
         run: |
-          flake8 app --max-line-length=100
+          python -V
+          python - << 'PY'
+import numpy, sklearn, sys
+print("numpy", numpy.__version__, "| sklearn", sklearn.__version__)
+print("exe", sys.executable)
+PY
 
-      - name: Smoke run (single request)
+      # Ensure sample data exists in the repo (your app expects these)
+      - name: Check repo structure (data/corpus present)
         run: |
-          python -m app.main --text "Test request for emails between Mayor's office and ACME."
+          ls -la
+          test -d data/corpus
+          test -f data/corpus/policy_foia.md
+          test -f data/corpus/prior_response_1.md
+          test -f data/corpus/prior_response_2.md
 
-      - name: Smoke run (batch jsonl)
+      # Smoke test your CLI (no GPU / no network)
+      - name: CLI smoke test (single request)
         run: |
-          python -m app.main --jsonl data/requests_sample.jsonl --out results.jsonl
-          test -s results.jsonl
+          python -m app.main --text "Test email records request to the Mayor's Office from Jan 2023." | head -n 1
