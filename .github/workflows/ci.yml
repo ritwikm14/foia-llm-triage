@@ -15,25 +15,38 @@ jobs:
         with:
           python-version: "3.11"
 
-      # Install deps using prebuilt wheels only (fast & reliable on Actions)
-      - name: Install dependencies (wheels only)
-        env:
-          PIP_ONLY_BINARY: ":all:"   # refuse to build from source
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
 
-      # Quick sanity print so logs show versions and interpreter path
-      - name: Quick environment report
+      # Try wheels-only first for speed/reliability; if a wheel is missing, fall back once.
+      - name: Install dependencies (prefer wheels)
+        run: |
+          set -eux
+          # If this fails, try again without wheel restriction
+          (PIP_ONLY_BINARY=":all:" pip install -r requirements.txt) || pip install -r requirements.txt
+
+      - name: Environment debug
         run: |
           python -V
+          python -m pip debug --verbose
           python - << 'PY'
-import numpy, sklearn, sys
-print("numpy", numpy.__version__, "| sklearn", sklearn.__version__)
-print("exe", sys.executable)
+import sys, platform
+print("exe:", sys.executable)
+print("platform:", platform.platform())
+PY
+          echo "----- pip freeze -----"
+          pip freeze
+
+      - name: Import checks (numpy / scipy / sklearn)
+        run: |
+          python - << 'PY'
+import numpy, scipy, sklearn
+print("numpy", numpy.__version__)
+print("scipy", scipy.__version__)
+print("sklearn", sklearn.__version__)
 PY
 
-      # Ensure sample data exists in the repo (your app expects these)
+      # Ensure the sample corpus committed with the repo is present
       - name: Check repo structure (data/corpus present)
         run: |
           ls -la
@@ -42,7 +55,7 @@ PY
           test -f data/corpus/prior_response_1.md
           test -f data/corpus/prior_response_2.md
 
-      # Smoke test your CLI (no GPU / no network)
+      # Final CLI smoke test – prints first line of JSON so logs stay short
       - name: CLI smoke test (single request)
         run: |
-          python -m app.main --text "Test email records request to the Mayor's Office from Jan 2023." | head -n 1
+          python -m app.main --text "Test email records request to the Mayor's Office from Jan 2023." | sed -n '1p'
